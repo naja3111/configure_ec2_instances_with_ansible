@@ -1,0 +1,43 @@
+---
+- hosts: all
+  name: install apache
+  remote_user: ec2-user
+  become: yes
+  become_method: sudo
+
+  tasks:
+  - name: update all available pakcages
+    yum: name='*' state=latest
+
+  - name: install apache with current version
+    yum: name=httpd state=present
+
+  - name: ensure apache server is running
+    service: name=httpd state=started
+  
+  - name: ensure apache server starts on reboot
+    service: name=httpd enabled=yes
+  
+  - name: run mariadb latest version with given piece of code
+    shell: amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+
+- hosts: all
+  name: install wordpress
+  vars:
+    database_name: '{{ lookup("env", "DATABASE_NAME") }}'
+    database_username: '{{ lookup("env", "DATABASE_USERNAME") }}'
+    database_password: '{{ lookup("env", "DATABASE_PASSWORD") }}'
+    database_endpoint: '{{ lookup("env", "DATABASE_ENDPOINT") }}'
+  remote_user: ec2-user
+  become: yes
+  become_method: sudo
+
+  tasks:
+  - name: download wordpress software and install in a file location
+    get_url: url=https://wordpress.org/latest.tar.gz dest=/var/www/wp.tar.gz
+
+  - name: unarchive wordpress software package
+    unarchive: src=/var/www/wp.tar.gz dest=/var/www/html remote_src=yes
+  
+  - name: configure with jinja2 template file
+    template: src=/home/ec2-user/ansible_templates/wp-config.j2 dest=/var/www/html/wordpress/wp-config.php
